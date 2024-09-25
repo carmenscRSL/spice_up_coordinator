@@ -1,9 +1,0 @@
-#request fields
-string target_spice
-sensor_msgs/Image mask
-sensor_msgs/Image color_frame
-bool has_five_contours
----
-#response fields
-bool success
-int8 idx

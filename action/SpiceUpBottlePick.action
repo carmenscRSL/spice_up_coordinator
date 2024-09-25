@@ -1,9 +1,0 @@
-#goal definition
-bool activation
----
-#result definition
-geometry_msgs/PoseStamped ee_pickup_target
-geometry_msgs/PoseStamped ee_dropoff_target
----
-#feedback
-string debug

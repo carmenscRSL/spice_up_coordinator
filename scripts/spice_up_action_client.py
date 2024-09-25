@@ -4,7 +4,7 @@ import rospy
 import sys
 import actionlib
 
-from spice_up_coordinator.msg import SpiceUpBottlePickAction,SpiceUpBottlePickGoal
+from cybathlon_bt_msgs.msg import SpiceUpBottlePickAction,SpiceUpBottlePickGoal
 
 
 def spice_up_action_client():

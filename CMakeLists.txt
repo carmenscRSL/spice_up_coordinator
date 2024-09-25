@@ -10,20 +10,16 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   actionlib
   actionlib_msgs
+  cybathlon_bt_msgs
 )
 
 ## Find Boost
 find_package(Boost REQUIRED COMPONENTS system thread)
 
 
-add_action_files(
-  FILES SpiceUpBottlePick.action
-)
-
 add_service_files(
    FILES
    GetSpiceName.srv
-   FindIndex.srv
    EstimatePose.srv
 )
 
