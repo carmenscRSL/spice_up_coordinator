@@ -74,7 +74,7 @@ class spiceUpCoordinator:
                 # self.mask_msg = pose_service_response.mask
                 # self.mask_has_five_contours = pose_service_response.has_five_contours
                 print("[spiceUpCoordinator] : Received shelf pose: "+str(T_ce_msg))
-                self.poseProcessor = poseProcessor(T_ce_msg,self.K,self.last_image_color,self.debug)
+                self.poseProcessor = poseProcessor(T_ce_msg,self.K,stamp,self.last_image_color,self.debug)
                 print("[spiceUpCoordinator] : Generated grasp and dropoff poses")
 
             # Send request for spice_name to spice_name_server
@@ -98,6 +98,9 @@ class spiceUpCoordinator:
             result.ee_pickup_target.header.stamp = stamp
             result.ee_intermediary_target.header.stamp = stamp
             result.ee_dropoff_target.header.stamp = stamp
+
+            # match the orientation of the dropoff to that of the pickup
+            result.ee_dropoff_target.pose.orientation = result.ee_pickup_target.pose.orientation
 
             # Broadcast grasp pose to tf-tree
             br = tf.TransformBroadcaster()
@@ -164,6 +167,7 @@ class spiceUpCoordinator:
 
         self.K = self.get_intrinsics()
 
+        # hardcoded intermediary point so that we don't collide with the shelf
         pose_msg = PoseStamped()
         pose_msg.header.frame_id = "base"
         pose_msg.pose.position.x = 0.925
