@@ -1,9 +1,9 @@
 <launch>
     
     <rosparam command="load" file="$(find spice_up_coordinator)/config/spice_up_coordinator.yaml" />
-    <rosparam command="load" file="$(find idx_finder)/config/index_finder.yaml" />
+
 
     <node pkg="spice_up_coordinator" type="spice_up_action_server.py" name="spice_up_action_server" output="screen"/>
-    <node pkg="idx_finder" type="idx_finder_server.py" name="idx_finder_server" output="screen"/>
+    
 
 </launch>

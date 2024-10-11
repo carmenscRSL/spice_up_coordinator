@@ -29,6 +29,7 @@ class poseProcessor:
         self.extents = self.mesh_props["extents"]
 
         self.output_frame = "racetrack"
+        self.camera_frame = "dynaarm_REALSENSE_color_optical_frame"
         self.gripper_frame = "dynaarm_END_EFFECTOR"
         self.alignment_axis = np.array([0, 0, 1])
 
@@ -44,6 +45,9 @@ class poseProcessor:
         T_es[3,3] = 1
 
         self.T_cs = self.T_ce @ T_es
+
+        self.tf_buffer = tf2_ros.Buffer()
+        self.listener = tf2_ros.TransformListener(self.tf_buffer)
 
         self.T_cdo0,self.T_cdo1 = self.get_drop_off_poses()
         self.T_cg0,self.T_cg1,self.T_cg2,self.T_cg3, = self.get_grasp_poses()
@@ -80,9 +84,10 @@ class poseProcessor:
             self, action_frame, target_axis, object_C,
             debug_frame, timestamp, safety_margin=0.0, fix_rotation_axis=None,
             fix_translation_axis=None):
+        tf_timeout = 0.5
         try: #TODO: do this only once as it's slow af
             tf2_A_C = self.tf_buffer.lookup_transform(
-                    action_frame, camera_frame, timestamp, rospy.Duration(tf_timeout))
+                    action_frame, self.camera_frame, timestamp, rospy.Duration(tf_timeout))
             tf2_O_A = self.tf_buffer.lookup_transform(
                     self.output_frame, action_frame, timestamp, rospy.Duration(tf_timeout))
             tf2_A_B = self.tf_buffer.lookup_transform(
@@ -210,16 +215,16 @@ class poseProcessor:
 
         # Construct transforms from E t0 m0,m1,m2,m3 (bottles middle points))
         T_em0 = np.eye(4)
-        T_em0[0:4,3] = EM0_r_E
+        T_em0[0:4,3] = EP0_r_E
 
         T_em1 = np.eye(4)
-        T_em1[0:4,3] = EM1_r_E
+        T_em1[0:4,3] = EP1_r_E
 
         T_em2 = np.eye(4)
-        T_em2[0:4,3] = EM2_r_E
+        T_em2[0:4,3] = EP2_r_E
 
         T_em3 = np.eye(4)
-        T_em3[0:4,3] = EM3_r_E
+        T_em3[0:4,3] = EP3_r_E
 
         # Bring into camera frame
         T_cg0 = self.T_ce @ T_em0  

@@ -1,5 +1,5 @@
 spice_up_coordinator:
-  username: "jau"
-  in_simulation_mode: True
-  mesh_file_path: "/home/jau/ros/catkin_ws/src/spice_up_coordinator/data/kallax_with_backplate_meters.obj"
+  username: "carmensc"
+  in_simulation_mode: False
+  mesh_file_path: "/home/carmensc/ros/catkin_ws/src/alma_rsl/dependencies/spice_up_coordinator/data/kallax_narrow_in_meters.obj"
   debug: True

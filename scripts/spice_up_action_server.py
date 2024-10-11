@@ -89,12 +89,15 @@ class spiceUpCoordinator:
             print("[spiceUpCoordinator] : Target spice index: "+str(target_location_index))
             
             # Fill result
+            print(self.poseProcessor.grasp_msg_dict) # TODO this array is filled with Falses
             grasp_msg = self.poseProcessor.grasp_msg_dict[target_location_index]
+            print(grasp_msg)
             result.ee_pickup_target = grasp_msg
             result.ee_intermediary_target = self.intermediary_target
             result.ee_dropoff_target = self.poseProcessor.drop_off_msg_dict[self.drop_off_index]
 
             # stamp over all msgs
+            print(stamp)
             result.ee_pickup_target.header.stamp = stamp
             result.ee_intermediary_target.header.stamp = stamp
             result.ee_dropoff_target.header.stamp = stamp
