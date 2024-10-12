@@ -5,11 +5,12 @@ import cv2
 # Ros 
 import rospy
 import tf
+import tf2_ros
 from cv_bridge import CvBridge, CvBridgeError
 import message_filters
 import actionlib
 # Ros msgs
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, TransformStamped
 from std_msgs.msg import Bool
 from sensor_msgs.msg import Image, CameraInfo
 # Custom msgs
@@ -34,6 +35,9 @@ class spiceUpCoordinator:
         depth_img_sub = message_filters.Subscriber(self.depth_topic_name,Image, queue_size=1)
         ts = message_filters.TimeSynchronizer([color_img_sub, depth_img_sub], 10)
         ts.registerCallback(self.synch_image_callback)
+
+        self.tf_buffer = tf2_ros.Buffer(cache_time=rospy.Duration(20))
+        self.listener = tf2_ros.TransformListener(self.tf_buffer)
         
         # Setup publishers
         self.shutdown_pub = rospy.Publisher("/shutdown_spice_up",Bool)
@@ -56,6 +60,7 @@ class spiceUpCoordinator:
     def service_cb(self, goal): # Goal of type: SpiceUpBottlePickGoal
         
         print("[spiceUpCoordinator] : Received action goal")
+        br = tf.TransformBroadcaster()
         
         result = SpiceUpBottlePickResult()
         result.ee_pickup_target = PoseStamped()
@@ -66,7 +71,7 @@ class spiceUpCoordinator:
             # If this is the first action request: request pose and upon receiving response generate grasp and dropoff poses
             if self.drop_off_index == 0: 
                 pose_request = EstimatePoseRequest(self.last_image_color_msg,self.last_image_depth_msg)
-                stamp = self.last_image_color_msg.header.stamp
+                self.stamp = self.last_image_color_msg.header.stamp
                 pose_service_handle = rospy.ServiceProxy('estimate_pose_service', EstimatePose)
                 print("[spiceUpCoordinator] : Requesting shelf pose")
                 pose_service_response = pose_service_handle(pose_request)
@@ -74,7 +79,7 @@ class spiceUpCoordinator:
                 # self.mask_msg = pose_service_response.mask
                 # self.mask_has_five_contours = pose_service_response.has_five_contours
                 print("[spiceUpCoordinator] : Received shelf pose: "+str(T_ce_msg))
-                self.poseProcessor = poseProcessor(T_ce_msg,self.K,stamp,self.last_image_color,self.debug)
+                self.poseProcessor = poseProcessor(T_ce_msg,self.K,self.stamp,self.last_image_color,self.debug,self.tf_buffer,self.listener)
                 print("[spiceUpCoordinator] : Generated grasp and dropoff poses")
 
             # Send request for spice_name to spice_name_server
@@ -97,27 +102,37 @@ class spiceUpCoordinator:
             result.ee_dropoff_target = self.poseProcessor.drop_off_msg_dict[self.drop_off_index]
 
             # stamp over all msgs
-            print(stamp)
-            result.ee_pickup_target.header.stamp = stamp
-            result.ee_intermediary_target.header.stamp = stamp
-            result.ee_dropoff_target.header.stamp = stamp
+            result.ee_pickup_target.header.stamp = self.stamp
+            result.ee_intermediary_target.header.stamp = self.stamp
+            result.ee_dropoff_target.header.stamp = self.stamp
 
             # match the orientation of the dropoff to that of the pickup
             result.ee_dropoff_target.pose.orientation = result.ee_pickup_target.pose.orientation
 
             # Broadcast grasp pose to tf-tree
-            br = tf.TransformBroadcaster()
-            br.sendTransform((grasp_msg.pose.position.x, 
-                                grasp_msg.pose.position.y, 
-                                grasp_msg.pose.position.z),
-                                (grasp_msg.pose.orientation.x,
-                                grasp_msg.pose.orientation.y,
-                                grasp_msg.pose.orientation.z,
-                                grasp_msg.pose.orientation.w),
-                                stamp,
-                                "spice_up_grasp",
-                                "dynaarm_REALSENSE_color_optical_frame")
+            # br = tf.TransformBroadcaster()
 
+            br.sendTransform((grasp_msg.pose.position.x, 
+                    grasp_msg.pose.position.y, 
+                    grasp_msg.pose.position.z),
+                    (grasp_msg.pose.orientation.x,
+                    grasp_msg.pose.orientation.y,
+                    grasp_msg.pose.orientation.z,
+                    grasp_msg.pose.orientation.w),
+                    rospy.Time.now(),
+                    "spice_up_grasp",
+                    grasp_msg.header.frame_id)
+
+            br.sendTransform((self.poseProcessor.drop_off_msg_dict[self.drop_off_index].pose.position.x, 
+                    self.poseProcessor.drop_off_msg_dict[self.drop_off_index].pose.position.y, 
+                    self.poseProcessor.drop_off_msg_dict[self.drop_off_index].pose.position.z),
+                    (self.poseProcessor.drop_off_msg_dict[self.drop_off_index].pose.orientation.x,
+                    self.poseProcessor.drop_off_msg_dict[self.drop_off_index].pose.orientation.y,
+                    self.poseProcessor.drop_off_msg_dict[self.drop_off_index].pose.orientation.z,
+                    self.poseProcessor.drop_off_msg_dict[self.drop_off_index].pose.orientation.w),
+                    rospy.Time.now(),
+                    "spice_up_dropoff",
+                    grasp_msg.header.frame_id)
             
             # Set action status to succeeded and transfer result to action server
             self.action_server.set_succeeded(result)
@@ -127,8 +142,8 @@ class spiceUpCoordinator:
             if pose_viz_img is not None:
                 pose_visualized_msg = self.cv2_to_ros(pose_viz_img)
                 self.pose_debug_pub.publish(pose_visualized_msg)
-                debug_imgs_path = rospy.get_param("index_finder/HOME") + "debug_imgs/pose"+str(self.drop_off_index)+"_viz.png"
-                cv2.imwrite(debug_imgs_path,pose_viz_img)
+                # debug_imgs_path = rospy.get_param("index_finder/HOME") + "debug_imgs/pose"+str(self.drop_off_index)+"_viz.png"
+                # cv2.imwrite(debug_imgs_path,pose_viz_img)
 
             self.drop_off_index += 1 # Use the second drop off pose for the next request
 
@@ -170,16 +185,16 @@ class spiceUpCoordinator:
 
         self.K = self.get_intrinsics()
 
-        # hardcoded intermediary point so that we don't collide with the shelf
+        # hardcoded intermediary point so that we don't collide with the shelf 0.702, 0.004, 0.712, 0.005
         pose_msg = PoseStamped()
         pose_msg.header.frame_id = "base"
-        pose_msg.pose.position.x = 0.925
-        pose_msg.pose.position.y = -0.145
-        pose_msg.pose.position.z = -0.048
-        pose_msg.pose.orientation.x = 0.706
-        pose_msg.pose.orientation.y = -0.000
-        pose_msg.pose.orientation.z = 0.708
-        pose_msg.pose.orientation.w = -0.000
+        pose_msg.pose.position.x = 0.663
+        pose_msg.pose.position.y = 0.0
+        pose_msg.pose.position.z = 0.499
+        pose_msg.pose.orientation.x = 0.702
+        pose_msg.pose.orientation.y = 0.004
+        pose_msg.pose.orientation.z = 0.712
+        pose_msg.pose.orientation.w = 0.005
         self.intermediary_target = pose_msg
 
     # Utils -----------------------------------------------------------    
