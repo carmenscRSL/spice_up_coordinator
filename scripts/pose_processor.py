@@ -213,10 +213,10 @@ class poseProcessor:
 
         # CONSTRUCT GRASPING POSES in E-frame
         z_off = 0.05
-        EP0_r_E = np.array([0.045,0.285,0.392+z_off,1.0])
-        EP1_r_E = np.array([0.045,0.125,0.392+z_off,1.0])
-        EP2_r_E = np.array([0.048,0.280,0.042+2.5*z_off,1.0])
-        EP3_r_E = np.array([0.048,0.130,0.042+2.5*z_off,1.0])
+        EP0_r_E = np.array([0.048,0.285,0.392+z_off,1.0])
+        EP1_r_E = np.array([0.048,0.125,0.392+z_off,1.0])
+        EP2_r_E = np.array([0.048,0.280,0.042+2.2*z_off,1.0])
+        EP3_r_E = np.array([0.048,0.130,0.042+2.2*z_off,1.0])
 
         # Construct transforms from E t0 m0,m1,m2,m3 (bottles middle points))
         T_em0 = np.eye(4)
@@ -241,7 +241,7 @@ class poseProcessor:
 
     def get_drop_off_poses(self):
         DO0_E = np.array([self.shelf_depth/4,self.shelf_width*0.75,self.shelf_height+0.05,1.0]) # Dropoff0 position in E-frame
-        DO1_E = np.array([self.shelf_depth/4,self.shelf_width*0.45,self.shelf_height+0.125,1.0]) # Dropoff1 position in E-frame
+        DO1_E = np.array([self.shelf_depth/3,self.shelf_width*0.45,self.shelf_height+0.11,1.0]) # Dropoff1 position in E-frame
         
         T_cdo0 = np.eye(4) # Dropoff0 pose in C-frame
         T_cdo0[:,3] = self.T_ce @ DO0_E

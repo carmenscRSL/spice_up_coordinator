@@ -36,12 +36,13 @@ class spiceUpCoordinator:
         ts = message_filters.TimeSynchronizer([color_img_sub, depth_img_sub], 10)
         ts.registerCallback(self.synch_image_callback)
 
-        self.tf_buffer = tf2_ros.Buffer(cache_time=rospy.Duration(20))
+        self.tf_buffer = tf2_ros.Buffer(cache_time=rospy.Duration(60))
         self.listener = tf2_ros.TransformListener(self.tf_buffer)
         
         # Setup publishers
         self.shutdown_pub = rospy.Publisher("/shutdown_spice_up",Bool)
         self.pose_debug_pub = rospy.Publisher("/debug_pose", Image, queue_size=1)
+        self.shutdown_sub = rospy.Subscriber("/shutdown_spice_up",Bool, self.shutdown_cb)
 
         # Start action service
         self.action_server = actionlib.SimpleActionServer("spice_up_action_server", SpiceUpBottlePickAction, execute_cb=self.service_cb, auto_start = False)
@@ -188,7 +189,7 @@ class spiceUpCoordinator:
         # hardcoded intermediary point so that we don't collide with the shelf 0.702, 0.004, 0.712, 0.005
         pose_msg = PoseStamped()
         pose_msg.header.frame_id = "base"
-        pose_msg.pose.position.x = 0.663
+        pose_msg.pose.position.x = 0.63
         pose_msg.pose.position.y = 0.0
         pose_msg.pose.position.z = 0.499
         pose_msg.pose.orientation.x = 0.702
@@ -231,6 +232,13 @@ class spiceUpCoordinator:
 
     def cv2_to_ros(self, frame: np.ndarray):
         return self._bridge.cv2_to_imgmsg(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), encoding="rgb8")
+
+    def shutdown_cb(self, msg):
+        print("[spiceUpCoordinator] : External Shutdown requested!")
+        print("[spiceUpCoordinator] : Shutting down")
+        result = SpiceUpBottlePickResult()
+        self.action_server.set_aborted(result)
+        rospy.signal_shutdown("External Shutdown requested")
     
     def shutdown(self,msg):
         print("[spiceUpCoordinator] : Sending shutdown request")
