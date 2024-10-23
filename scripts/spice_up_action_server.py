@@ -101,11 +101,13 @@ class spiceUpCoordinator:
             result.ee_pickup_target = grasp_msg
             result.ee_intermediary_target = self.intermediary_target
             result.ee_dropoff_target = self.poseProcessor.drop_off_msg_dict[self.drop_off_index]
+            result.ee_pre_target = self.poseProcessor.approach_msg_dict[target_location_index]
 
             # stamp over all msgs
             result.ee_pickup_target.header.stamp = self.stamp
             result.ee_intermediary_target.header.stamp = self.stamp
             result.ee_dropoff_target.header.stamp = self.stamp
+            result.ee_pre_target.header.stamp = self.stamp
 
             # match the orientation of the dropoff to that of the pickup
             result.ee_dropoff_target.pose.orientation = result.ee_pickup_target.pose.orientation

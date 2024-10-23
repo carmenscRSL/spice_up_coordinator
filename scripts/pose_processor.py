@@ -55,6 +55,7 @@ class poseProcessor:
 
         self.T_cdo0,self.T_cdo1 = self.get_drop_off_poses()
         self.T_cg0,self.T_cg1,self.T_cg2,self.T_cg3, = self.get_grasp_poses()
+        self.T_cpg0,self.T_cpg1,self.T_cpg2,self.T_cpg3, = self.get_approach_poses()
 
         # Create pose msgs
         T_cg0_msg = self.calculate_target_pose(self.gripper_frame, self.alignment_axis, self.T_cg0[:,3], "spice_up_target0", stamp, safety_margin=0.0)
@@ -77,6 +78,13 @@ class poseProcessor:
             1: T_cg1_msg,
             2: T_cg2_msg,
             3: T_cg3_msg
+        }
+
+        self.approach_msg_dict = {
+            0: self.calculate_target_pose(self.gripper_frame, self.alignment_axis, self.T_cpg0[:,3], "spice_up_approach_target0", stamp, safety_margin=0.0),
+            1: self.calculate_target_pose(self.gripper_frame, self.alignment_axis, self.T_cpg1[:,3], "spice_up_approach_target1", stamp, safety_margin=0.0),
+            2: self.calculate_target_pose(self.gripper_frame, self.alignment_axis, self.T_cpg2[:,3], "spice_up_approach_target2", stamp, safety_margin=0.0),
+            3: self.calculate_target_pose(self.gripper_frame, self.alignment_axis, self.T_cpg3[:,3], "spice_up_approach_target3", stamp, safety_margin=0.0)
         }
 
         self.drop_off_msg_dict = {
@@ -203,20 +211,14 @@ class poseProcessor:
             position: center of contact circle between spice-bottle-i and shelf
             rotation: same as E-Frame
         B-frame: anymal base frame (so far only faked in this function)
-
-        _____
-        |2|3|
-        -----
-        |0|1|
-        -----
         '''
 
         # CONSTRUCT GRASPING POSES in E-frame
         z_off = 0.05
         EP0_r_E = np.array([0.048,0.285,0.392+z_off,1.0])
-        EP1_r_E = np.array([0.048,0.125,0.392+z_off,1.0])
-        EP2_r_E = np.array([0.048,0.280,0.042+2.2*z_off,1.0])
-        EP3_r_E = np.array([0.048,0.130,0.042+2.2*z_off,1.0])
+        EP1_r_E = np.array([0.048,0.16,0.392+z_off,1.0])
+        EP2_r_E = np.array([0.048,0.285,0.042+2.2*z_off,1.0])
+        EP3_r_E = np.array([0.048,0.16,0.042+2.2*z_off,1.0])
 
         # Construct transforms from E t0 m0,m1,m2,m3 (bottles middle points))
         T_em0 = np.eye(4)
@@ -239,9 +241,51 @@ class poseProcessor:
 
         return T_cg0,T_cg1,T_cg2,T_cg3  
 
+    def get_approach_poses(self):
+
+        '''
+        C-frame: camera frame
+        E-frame: 
+            position: bottom right front corner of shelf
+            rotation: x: depth of shelf, y: width of shelf, z: height of shelf
+        M-frame (M0,M1,M2,M3)
+            position: center of contact circle between spice-bottle-i and shelf
+            rotation: same as E-Frame
+        B-frame: anymal base frame (so far only faked in this function)
+        '''
+
+        # CONSTRUCT APPROACH POSES in E-frame
+        z_off = 0.08
+        x_off = 0.08
+        EP0_r_E = np.array([0.048-x_off,0.285,0.392+z_off,1.0])
+        EP1_r_E = np.array([0.048-x_off,0.16,0.392+z_off,1.0])
+        EP2_r_E = np.array([0.048-x_off,0.285,0.042+2.2*z_off,1.0])
+        EP3_r_E = np.array([0.048-x_off,0.16,0.042+2.2*z_off,1.0])
+
+        # Construct transforms from E t0 m0,m1,m2,m3 (bottles middle points))
+        T_em0 = np.eye(4)
+        T_em0[0:4,3] = EP0_r_E
+
+        T_em1 = np.eye(4)
+        T_em1[0:4,3] = EP1_r_E
+
+        T_em2 = np.eye(4)
+        T_em2[0:4,3] = EP2_r_E
+
+        T_em3 = np.eye(4)
+        T_em3[0:4,3] = EP3_r_E
+
+        # Bring into camera frame
+        T_cg0 = self.T_ce @ T_em0  
+        T_cg1 = self.T_ce @ T_em1  
+        T_cg2 = self.T_ce @ T_em2  
+        T_cg3 = self.T_ce @ T_em3
+
+        return T_cg0,T_cg1,T_cg2,T_cg3 
+
     def get_drop_off_poses(self):
-        DO0_E = np.array([self.shelf_depth/4,self.shelf_width*0.75,self.shelf_height+0.05,1.0]) # Dropoff0 position in E-frame
-        DO1_E = np.array([self.shelf_depth/3,self.shelf_width*0.45,self.shelf_height+0.11,1.0]) # Dropoff1 position in E-frame
+        DO0_E = np.array([self.shelf_depth/3,self.shelf_width*0.6,self.shelf_height+0.10,1.0]) # Dropoff0 position in E-frame
+        DO1_E = np.array([self.shelf_depth/3,self.shelf_width*0.4,self.shelf_height+0.10,1.0]) # Dropoff1 position in E-frame
         
         T_cdo0 = np.eye(4) # Dropoff0 pose in C-frame
         T_cdo0[:,3] = self.T_ce @ DO0_E
